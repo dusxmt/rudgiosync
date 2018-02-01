@@ -1,0 +1,32 @@
+# Ignore built stuff.
+*.o
+.deps
+.libs
+rudgiosync
+
+# Ignore autotools-generated stuff.
+Makefile
+Makefile.in
+configure
+
+/build-aux/*
+/m4/*
+/autom4te.cache
+/aclocal.m4
+/stamp-h1
+
+config.h
+config.h.in
+config.status
+config.cache
+config.log
+
+# Ignore emacs backups.
+*~
+
+
+# Keep .keep files, they make sure directories won't disappear.
+!.keep
+
+# Other exceptions.
+!/build-aux/gitlog-to-changelog*
