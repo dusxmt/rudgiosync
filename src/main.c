@@ -50,16 +50,16 @@ main (int argc, char **argv)
       return 1;
     }
 
-  rudgiosync_synchronize (&destination, &source, TRUE, FALSE, TRUE, &ierror);
+  /*
+  rudgiosync_synchronize (&destination, &source, FALSE, FALSE, TRUE, &ierror);
   if (ierror != NULL)
     {
       g_print ("Synchronization failed: %s.\n", ierror->message);
       g_clear_error (&ierror);
     }
-  /*
+  */
   traverse_directory_tree (source, NULL);
   traverse_directory_tree (destination, NULL);
-  */
 
   rudgiosync_directory_entry_free (source);
   rudgiosync_directory_entry_free (destination);

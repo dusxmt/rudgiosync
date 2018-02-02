@@ -141,7 +141,7 @@ rudgiosync_directory_entry_new_internal (const gchar *uri, GFile *descriptor, GF
               }
             child_descriptor = g_file_get_child (retval->descriptor, string_attr);
             child_uri = g_file_get_uri (child_descriptor);
-            child_entry = rudgiosync_directory_entry_new_internal (child_uri, child_descriptor, child_info, checksum_wanted, error);
+            child_entry = rudgiosync_directory_entry_new_internal (child_uri, child_descriptor, child_info, checksum_wanted, &ierror);
             g_free (child_uri);
             g_object_unref (child_descriptor);
             g_object_unref (child_info);
