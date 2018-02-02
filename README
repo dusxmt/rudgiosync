@@ -4,8 +4,9 @@ Rudgiosync is a simplistic file synchronizing utility, inspired heavily by
 rsync, which uses gio as its I/O library, and can therefore access and
 synchronize gvfs-based filesystems.
 
-Currently, the synchronizer only compares files based on their size, but
-checksum-based comparison and timestamp-based comparison is planned as well.
+Currently, the synchronization utility compares files based on their size and
+the time of their last modification, but support for checksum-based comparison
+is planned as well.
 
 While proper command-line argument handling is planned, currently, the program
 expects two command-line arguments, the source and destination URIs identifying

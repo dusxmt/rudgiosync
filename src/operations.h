@@ -31,7 +31,7 @@ gboolean rudgiosync_directory_entry_delete (RudgiosyncDirectoryEntry *entry,
 
 gboolean rudgiosync_synchronize (RudgiosyncDirectoryEntry **destination,
                                  RudgiosyncDirectoryEntry **source,
-                                 gboolean size_only,
+                                 gboolean check_timestamp,
                                  gboolean checksum_only,
                                  gboolean delete_unwanted,
                                  GError **error);

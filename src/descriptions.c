@@ -37,6 +37,7 @@ rudgiosync_directory_entry_new_internal (const gchar *uri, GFile *descriptor, GF
   retval = g_slice_new0 (RudgiosyncDirectoryEntry);
   retval->descriptor = g_object_ref (descriptor);
 
+  retval->modified_time = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_TIME_MODIFIED);
   switch (g_file_info_get_attribute_uint32 (info, G_FILE_ATTRIBUTE_STANDARD_TYPE))
     {
       case G_FILE_TYPE_REGULAR:
@@ -95,7 +96,8 @@ rudgiosync_directory_entry_new_internal (const gchar *uri, GFile *descriptor, GF
                                                 G_FILE_ATTRIBUTE_STANDARD_TYPE ","
                                                 G_FILE_ATTRIBUTE_STANDARD_NAME ","
                                                 G_FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME ","
-                                                G_FILE_ATTRIBUTE_STANDARD_SIZE,
+                                                G_FILE_ATTRIBUTE_STANDARD_SIZE ","
+                                                G_FILE_ATTRIBUTE_TIME_MODIFIED,
                                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                                 NULL,
                                                 &ierror);
@@ -178,7 +180,8 @@ rudgiosync_directory_entry_new (const gchar *uri, gboolean checksum_wanted, GErr
                             G_FILE_ATTRIBUTE_STANDARD_TYPE ","
                             G_FILE_ATTRIBUTE_STANDARD_NAME ","
                             G_FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME ","
-                            G_FILE_ATTRIBUTE_STANDARD_SIZE,
+                            G_FILE_ATTRIBUTE_STANDARD_SIZE ","
+                            G_FILE_ATTRIBUTE_TIME_MODIFIED,
                             G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                             NULL,
                             &ierror);
@@ -186,9 +189,7 @@ rudgiosync_directory_entry_new (const gchar *uri, gboolean checksum_wanted, GErr
     {
       g_propagate_prefixed_error (error, ierror, "Failed to retrieve information about the file identified by `%s': ", uri);
 
-      g_object_unref (info);
       g_object_unref (descriptor);
-
       return NULL;
     }
 

@@ -50,6 +50,7 @@ struct RudgiosyncDirectoryEntry_
   GFile  *descriptor;
   gchar  *name;
   gchar  *display_name;
+  guint64 modified_time;
 
   union
     {

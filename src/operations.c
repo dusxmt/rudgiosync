@@ -45,23 +45,23 @@ traverse_directory_tree (RudgiosyncDirectoryEntry *entry, const gchar *prefix)
     {
       printed_name = g_strdup (entry->display_name);
     }
-  g_print ("%s/", printed_name);
+  g_print ("%s", printed_name);
 
   switch (entry->type)
     {
       case RUDGIOSYNC_DIR_ENTRY_FILE:
         if (entry->data.file.checksum != NULL)
           {
-            g_print (" (file, size: %" G_GUINT64_FORMAT ", checksum: %s)\n", entry->data.file.size, entry->data.file.checksum);
+            g_print (" (file, size: %" G_GUINT64_FORMAT ", modified: %" G_GUINT64_FORMAT ", checksum: %s)\n", entry->data.file.size, entry->modified_time, entry->data.file.checksum);
           }
         else
           {
-            g_print (" (file, size: %" G_GUINT64_FORMAT ")\n", entry->data.file.size);
+            g_print (" (file, size: %" G_GUINT64_FORMAT ", modified: %" G_GUINT64_FORMAT ")\n", entry->data.file.size, entry->modified_time);
           }
         break;
 
       case RUDGIOSYNC_DIR_ENTRY_DIR:
-        g_print ("/ (directory)\n");
+        g_print ("/ (directory, modified: %" G_GUINT64_FORMAT ")\n", entry->modified_time);
 
         g_slist_foreach (entry->data.directory.entries, traverse_directory_tree_p, printed_name);
         break;
@@ -71,6 +71,37 @@ traverse_directory_tree (RudgiosyncDirectoryEntry *entry, const gchar *prefix)
     }
 
   g_free (printed_name);
+}
+
+gboolean
+set_modified_time (GFile *descriptor, guint64 modified_time, GError **error)
+{
+  GFileInfo *info;
+  GError *ierror = NULL;
+
+  info = g_file_query_info (descriptor,
+                            G_FILE_ATTRIBUTE_TIME_MODIFIED,
+                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                            NULL,
+                            &ierror);
+  if (ierror != NULL)
+    {
+      g_propagate_error (error, ierror);
+      return FALSE;
+    }
+  g_file_info_set_attribute_uint64 (info, G_FILE_ATTRIBUTE_TIME_MODIFIED,
+                                    modified_time);
+  g_file_set_attributes_from_info (descriptor, info,
+                                   G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                   NULL,
+                                   &ierror);
+  g_object_unref (info);
+  if (ierror != NULL)
+    {
+      g_propagate_error (error, ierror);
+      return FALSE;
+    }
+  return TRUE;
 }
 
 gboolean
@@ -207,28 +238,27 @@ create_empty_file (GFile *descriptor, gboolean checksum_wanted, GError **error)
 static gboolean
 files_differ (RudgiosyncDirectoryEntry *destination,
               RudgiosyncDirectoryEntry *source,
-              gboolean size_only, gboolean checksum_only)
+              gboolean check_timestamp, gboolean checksum_only)
 {
-  if (size_only)
+  if (checksum_only)
     {
-      return destination->data.file.size != source->data.file.size;
+      g_warning ("Checksum comparison not yet supported, falling back to the defaults.");
     }
-  else if (checksum_only)
+  if (!check_timestamp)
     {
-      g_warning ("Checksum comparison not yet supported, falling back to size-only.");
       return destination->data.file.size != source->data.file.size;
     }
   else
     {
-      /* Here, we would check the modified timestamp and size. */
-      return destination->data.file.size != source->data.file.size;
+      return (destination->data.file.size != source->data.file.size)
+             || (destination->modified_time != source->modified_time);
     }
 }
 
 /* Forward declaration. */
 static gboolean rudgiosync_synchronize_internal (RudgiosyncDirectoryEntry **destination,
                                                  RudgiosyncDirectoryEntry **source,
-                                                 gboolean size_only,
+                                                 gboolean check_timestamp,
                                                  gboolean checksum_only,
                                                  gboolean delete_unwanted,
                                                  const gchar *prefix,
@@ -238,7 +268,7 @@ static gboolean rudgiosync_synchronize_internal (RudgiosyncDirectoryEntry **dest
 static gboolean
 sync_file (RudgiosyncDirectoryEntry *destination,
            RudgiosyncDirectoryEntry *source,
-           gboolean size_only,
+           gboolean check_timestamp,
            gboolean checksum_only,
            const gchar *prefix,
            gboolean already_modified,
@@ -262,18 +292,16 @@ sync_file (RudgiosyncDirectoryEntry *destination,
   g_assert (source->type == RUDGIOSYNC_DIR_ENTRY_FILE);
   g_assert (destination->type == RUDGIOSYNC_DIR_ENTRY_FILE);
 
-  modified = files_differ (destination, source, size_only, checksum_only);
+  modified = already_modified
+             || files_differ (destination, source, check_timestamp, checksum_only);
 
-  if (already_modified || modified)
+  if (modified)
     {
       if (prefix != NULL)
         g_print ("%s/%s\n", prefix, destination->display_name);
       else
         g_print ("%s\n", destination->display_name);
-    }
 
-  if (modified)
-    {
       input_stream = g_file_read (source->descriptor, NULL, &ierror);
       if (ierror != NULL)
         {
@@ -350,15 +378,17 @@ sync_file (RudgiosyncDirectoryEntry *destination,
       g_free (transfer_buf);
       g_object_unref (input_stream);
       g_object_unref (output_stream);
+
+      set_modified_time (destination->descriptor, source->modified_time, NULL);
     }
 
-  return TRUE;
+  return FALSE;
 }
 
 static gboolean
 sync_directory (RudgiosyncDirectoryEntry *destination,
                 RudgiosyncDirectoryEntry *source,
-                gboolean size_only,
+                gboolean check_timestamp,
                 gboolean checksum_only,
                 gboolean delete_unwanted,
                 const gchar *prefix,
@@ -390,14 +420,12 @@ sync_directory (RudgiosyncDirectoryEntry *destination,
   else
     dest_entry_prefix = g_strdup (destination->display_name);
 
-  /**
-   * To be symmetrical with sync_file, this routine has an already_modified
-   * argument.  Unlike sync_file, we handle the argument right at the beginning,
-   * since we don't consider adding/deleting entries to be modifying the
-   * directory itself.
-   */
-  if (already_modified)
-    g_print ("%s/\n", dest_entry_prefix);
+  if (already_modified
+      || (check_timestamp
+          && (destination->modified_time != source->modified_time)))
+    {
+      g_print ("%s/\n", dest_entry_prefix);
+    }
 
   for (src_entry_li = source->data.directory.entries;
        src_entry_li != NULL;
@@ -415,7 +443,7 @@ sync_directory (RudgiosyncDirectoryEntry *destination,
           if (strcmp (src_entry->name, dest_entry->name) == 0)
             {
               rudgiosync_synchronize_internal (&dest_entry, &src_entry,
-                                               size_only, checksum_only, delete_unwanted,
+                                               check_timestamp, checksum_only, delete_unwanted,
                                                dest_entry_prefix,
                                                &ierror);
 
@@ -447,7 +475,7 @@ sync_directory (RudgiosyncDirectoryEntry *destination,
                     return FALSE;
                   }
                 sync_file (dest_entry, src_entry,
-                           size_only, checksum_only,
+                           check_timestamp, checksum_only,
                            dest_entry_prefix,
                            TRUE,
                            &ierror);
@@ -483,7 +511,7 @@ sync_directory (RudgiosyncDirectoryEntry *destination,
                     return FALSE;
                   }
                 sync_directory (dest_entry, src_entry,
-                                size_only, checksum_only, delete_unwanted,
+                                check_timestamp, checksum_only, delete_unwanted,
                                 dest_entry_prefix,
                                 TRUE,
                                 &ierror);
@@ -509,6 +537,7 @@ sync_directory (RudgiosyncDirectoryEntry *destination,
             }
         }
     }
+  set_modified_time (destination->descriptor, source->modified_time, NULL);
 
   g_free (dest_entry_prefix);
   return TRUE;
@@ -517,7 +546,7 @@ sync_directory (RudgiosyncDirectoryEntry *destination,
 static gboolean
 rudgiosync_synchronize_internal (RudgiosyncDirectoryEntry **destination,
                                  RudgiosyncDirectoryEntry **source,
-                                 gboolean size_only,
+                                 gboolean check_timestamp,
                                  gboolean checksum_only,
                                  gboolean delete_unwanted,
                                  const gchar *prefix,
@@ -591,7 +620,7 @@ rudgiosync_synchronize_internal (RudgiosyncDirectoryEntry **destination,
       g_assert (*destination != NULL);
       g_assert ((*destination)->type == RUDGIOSYNC_DIR_ENTRY_FILE);
 
-      sync_file (*destination, *source, size_only, checksum_only, prefix, already_modified, &ierror);
+      sync_file (*destination, *source, check_timestamp, checksum_only, prefix, already_modified, &ierror);
       if (ierror != NULL)
         {
           g_propagate_error (error, ierror);
@@ -647,7 +676,7 @@ rudgiosync_synchronize_internal (RudgiosyncDirectoryEntry **destination,
             }
         }
 
-      sync_directory (*destination, *source, size_only, checksum_only, delete_unwanted, prefix, already_modified, &ierror);
+      sync_directory (*destination, *source, check_timestamp, checksum_only, delete_unwanted, prefix, already_modified, &ierror);
       if (ierror != NULL)
         {
           g_propagate_error (error, ierror);
@@ -661,13 +690,13 @@ rudgiosync_synchronize_internal (RudgiosyncDirectoryEntry **destination,
 gboolean
 rudgiosync_synchronize (RudgiosyncDirectoryEntry **destination,
                         RudgiosyncDirectoryEntry **source,
-                        gboolean size_only,
+                        gboolean check_timestamp,
                         gboolean checksum_only,
                         gboolean delete_unwanted,
                         GError **error)
 {
   return rudgiosync_synchronize_internal (destination, source,
-                                          size_only, checksum_only, delete_unwanted,
+                                          check_timestamp, checksum_only, delete_unwanted,
                                           NULL,
                                           error);
 }
