@@ -206,7 +206,6 @@ create_empty_file (GFile *descriptor, gboolean checksum_wanted, GError **error)
 {
   RudgiosyncDirectoryEntry *retval;
   GFileOutputStream        *output_stream;
-  gchar                    *uri;
 
   GError *ierror = NULL;
 
@@ -222,10 +221,7 @@ create_empty_file (GFile *descriptor, gboolean checksum_wanted, GError **error)
     }
   g_object_unref (output_stream);
 
-  uri = g_file_get_uri (descriptor);
-  retval = rudgiosync_directory_entry_new (uri, checksum_wanted, &ierror);
-  g_free (uri);
-
+  retval = rudgiosync_directory_entry_new (descriptor, checksum_wanted, &ierror);
   if (ierror != NULL)
     {
       g_propagate_error (error, ierror);
@@ -402,8 +398,6 @@ sync_directory (RudgiosyncDirectoryEntry *destination,
   GSList *dest_entry_li;
 
   gchar *src_uri;
-  gchar *dest_uri;
-
   gboolean found;
 
   GFile *temp_descriptor;
@@ -500,10 +494,8 @@ sync_directory (RudgiosyncDirectoryEntry *destination,
                     g_free (dest_entry_prefix);
                     return FALSE;
                   }
-                dest_uri = g_file_get_uri (temp_descriptor);
+                dest_entry = rudgiosync_directory_entry_new (temp_descriptor, checksum_only, &ierror);
                 g_object_unref (temp_descriptor);
-                dest_entry = rudgiosync_directory_entry_new (dest_uri, checksum_only, &ierror);
-                g_free (dest_uri);
                 if (ierror != NULL)
                   {
                     g_propagate_error (error, ierror);
@@ -631,7 +623,7 @@ rudgiosync_synchronize_internal (RudgiosyncDirectoryEntry **destination,
     {
       if ((*destination)->type != RUDGIOSYNC_DIR_ENTRY_DIR)
         {
-          dest_uri = g_file_get_uri ((*destination)->descriptor);
+          temp_descriptor = g_object_ref ((*destination)->descriptor);
 
           rudgiosync_directory_entry_delete (*destination, &ierror);
           *destination = NULL;
@@ -640,22 +632,20 @@ rudgiosync_synchronize_internal (RudgiosyncDirectoryEntry **destination,
             {
               g_propagate_error (error, ierror);
 
-              g_free (dest_uri);
+              g_object_unref (temp_descriptor);
               return FALSE;
             }
 
-          temp_descriptor = g_file_new_for_uri (dest_uri);
           g_file_make_directory (temp_descriptor, NULL, &ierror);
-          g_object_unref (temp_descriptor);
           if (ierror != NULL)
             {
               g_propagate_error (error, ierror);
 
-              g_free (dest_uri);
+              g_object_unref (temp_descriptor);
               return FALSE;
             }
-          *destination = rudgiosync_directory_entry_new (dest_uri, checksum_only, &ierror);
-          g_free (dest_uri);
+          *destination = rudgiosync_directory_entry_new (temp_descriptor, checksum_only, &ierror);
+          g_object_unref (temp_descriptor);
           if (ierror != NULL)
             {
               g_propagate_error (error, ierror);

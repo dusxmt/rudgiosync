@@ -58,7 +58,7 @@ rudgiosync_directory_entry_new_internal (const gchar *uri, GFile *descriptor, GF
     {
       g_set_error (error, RUDGIOSYNC_ERROR,
                    RUDGIOSYNC_INFO_RETRIEVAL_ERROR,
-                   "Failed to retrieve information about the file identified by `%s': %s",
+                   "Failed to retrieve information about the file `%s': %s",
                    uri,
                    "Filename information missing in GFileInfo");
 
@@ -72,7 +72,7 @@ rudgiosync_directory_entry_new_internal (const gchar *uri, GFile *descriptor, GF
     {
       g_set_error (error, RUDGIOSYNC_ERROR,
                    RUDGIOSYNC_INFO_RETRIEVAL_ERROR,
-                   "Failed to retrieve information about the file identified by `%s': %s",
+                   "Failed to retrieve information about the file `%s': %s",
                    uri,
                    "Displayable filename information missing in GFileInfo");
 
@@ -103,7 +103,7 @@ rudgiosync_directory_entry_new_internal (const gchar *uri, GFile *descriptor, GF
                                                 &ierror);
         if (ierror != NULL)
           {
-            g_propagate_prefixed_error (error, ierror, "Failed to retrieve information about the children of the directory identified by `%s': ", uri);
+            g_propagate_prefixed_error (error, ierror, "Failed to retrieve information about the children of the directory `%s': ", uri);
 
             rudgiosync_directory_entry_free (retval);
             return NULL;
@@ -113,7 +113,7 @@ rudgiosync_directory_entry_new_internal (const gchar *uri, GFile *descriptor, GF
             child_info = g_file_enumerator_next_file (enumerator, NULL, &ierror);
             if (ierror != NULL)
               {
-                g_propagate_prefixed_error (error, ierror, "Failed to retrieve information about a child of the directory identified by `%s': ", uri);
+                g_propagate_prefixed_error (error, ierror, "Failed to retrieve information about a child of the directory `%s': ", uri);
 
                 g_object_unref (enumerator);
                 rudgiosync_directory_entry_free (retval);
@@ -129,7 +129,7 @@ rudgiosync_directory_entry_new_internal (const gchar *uri, GFile *descriptor, GF
               {
                 g_set_error (error, RUDGIOSYNC_ERROR,
                              RUDGIOSYNC_INFO_RETRIEVAL_ERROR,
-                             "Failed to retrieve information about a child of the directory identified by `%s': %s",
+                             "Failed to retrieve information about a child of the directory `%s': %s",
                              uri,
                              "Filename information missing in GFileInfo retrieved from GFileEnumerator");
 
@@ -148,7 +148,7 @@ rudgiosync_directory_entry_new_internal (const gchar *uri, GFile *descriptor, GF
 
             if (ierror != NULL)
               {
-                g_propagate_prefixed_error (error, ierror, "Failed to retrieve information about a child of the directory identified by `%s': ", uri);
+                g_propagate_prefixed_error (error, ierror, "Failed to retrieve information about a child of the directory `%s': ", uri);
 
                 g_object_unref (enumerator);
                 rudgiosync_directory_entry_free (retval);
@@ -167,15 +167,15 @@ rudgiosync_directory_entry_new_internal (const gchar *uri, GFile *descriptor, GF
 }
 
 RudgiosyncDirectoryEntry *
-rudgiosync_directory_entry_new (const gchar *uri, gboolean checksum_wanted, GError **error)
+rudgiosync_directory_entry_new (GFile *descriptor, gboolean checksum_wanted, GError **error)
 {
   RudgiosyncDirectoryEntry *retval;
 
-  GFile      *descriptor;
+  gchar      *uri;
   GFileInfo  *info;
   GError     *ierror = NULL;
 
-  descriptor = g_file_new_for_uri (uri);
+  uri = g_file_get_uri (descriptor);
   info = g_file_query_info (descriptor,
                             G_FILE_ATTRIBUTE_STANDARD_TYPE ","
                             G_FILE_ATTRIBUTE_STANDARD_NAME ","
@@ -187,16 +187,16 @@ rudgiosync_directory_entry_new (const gchar *uri, gboolean checksum_wanted, GErr
                             &ierror);
   if (ierror != NULL)
     {
-      g_propagate_prefixed_error (error, ierror, "Failed to retrieve information about the file identified by `%s': ", uri);
+      g_propagate_prefixed_error (error, ierror, "Failed to retrieve information about the file `%s': ", uri);
 
-      g_object_unref (descriptor);
+      g_free (uri);
       return NULL;
     }
 
   retval = rudgiosync_directory_entry_new_internal (uri, descriptor, info, checksum_wanted, error);
 
   g_object_unref (info);
-  g_object_unref (descriptor);
+  g_free (uri);
 
   return retval;
 }

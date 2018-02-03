@@ -1,5 +1,6 @@
 Rudgiosync - The Rudimentary GIO Synchronization utility.
 
+
 Rudgiosync is a simplistic file synchronizing utility, inspired heavily by
 rsync, which uses gio as its I/O library, and can therefore access and
 synchronize gvfs-based filesystems.
@@ -8,15 +9,18 @@ Currently, the synchronization utility compares files based on their size and
 the time of their last modification, but support for checksum-based comparison
 is planned as well.
 
-The program expects two command-line arguments, the source and destination URIs
-identifying the folders to be synchronized.  Additionally, you may specify
-whether you want files to be compared solely by their size, or by their size
-and the time of their last modification; see rudgiosync --help for more details.
+
+The program expects two command-line arguments, the source and destination
+locations to be synchronized (specified as a filename or a GIO-supported URI).
+
+Additionally, you may specify whether you want files to be compared solely by
+their size, or by their size and the time of their last modification; see the
+help listing for more details:  rudgiosync --help
 
 
 Example usage:
 
-    $ rudgiosync -ds "file:///tmp/sync/" "mtp://[usb:005,007]/SD card/sync/"
+    $ rudgiosync -ds "/tmp/sync/" "mtp://[usb:005,007]/SD card/sync/"
 
 
 Installing/Compiling:

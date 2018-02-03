@@ -37,8 +37,8 @@ main (int argc, char **argv)
   RudgiosyncDirectoryEntry *source;
   RudgiosyncDirectoryEntry *destination;
 
-  const gchar *src_uri;
-  const gchar *dest_uri;
+  GFile *src_descriptor;
+  GFile *dest_descriptor;
 
   GError *ierror = NULL;
 
@@ -50,9 +50,11 @@ main (int argc, char **argv)
                                "rsync, which uses GIO as its I/O library, and can therefore natively access\n"
                                "and synchronize gvfs-based filesystems.\n"
                                "\n"
-                               "The <source> and <destination> arguments must be valid GIO-supported URIs.");
+                               "The <source> and <destination> location arguments can be either file names, or\n"
+                               "GIO-supported URIs.");
   g_option_context_add_main_entries (opt_context, opt_entries, NULL);
   g_option_context_parse (opt_context, &argc, &argv, &ierror);
+  g_option_context_free (opt_context);
   if (ierror != NULL)
     {
       g_printerr ("%s: Command line option parsing failed: %s.\n", g_get_prgname (), ierror->message);
@@ -65,47 +67,68 @@ main (int argc, char **argv)
       g_printerr ("%s: Command line option parsing failed: %s.\n", g_get_prgname (), "Source location missing");
       return 1;
     }
-  src_uri = argv[1];
-
   if (argc < 3)
     {
       g_printerr ("%s: Command line option parsing failed: %s.\n", g_get_prgname (), "Destination location missing");
       return 1;
     }
-  dest_uri = argv[2];
-
   if (argc > 3)
     {
       g_printerr ("%s: Command line option parsing failed: Unknown option `%s'.\n", g_get_prgname (), argv[3]);
       return 1;
     }
 
+  if (opt_checksum)
+    {
+      g_printerr ("Sorry, checksum-based file comparison is not supported yet.\n");
+      return 1;
+    }
+
+  src_descriptor = g_file_new_for_commandline_arg (argv[1]);
+  dest_descriptor = g_file_new_for_commandline_arg (argv[2]);
 
   g_print ("Examining source directory tree... ");
-  source = rudgiosync_directory_entry_new (src_uri, FALSE, &ierror);
+  source = rudgiosync_directory_entry_new (src_descriptor, opt_checksum, &ierror);
   g_print ("done.\n");
   if (ierror != NULL)
     {
       g_printerr ("%s: Failed to investigate the source: %s.\n", g_get_prgname (), ierror->message);
+
       g_clear_error (&ierror);
+      g_object_unref (src_descriptor);
+      g_object_unref (dest_descriptor);
+
       return 1;
     }
 
   g_print ("Examining destination directory tree... ");
-  destination = rudgiosync_directory_entry_new (dest_uri, FALSE, &ierror);
+  destination = rudgiosync_directory_entry_new (dest_descriptor, opt_checksum, &ierror);
   g_print ("done.\n");
   if (ierror != NULL)
     {
       g_printerr ("%s: Failed to investigate the destination: %s.\n", g_get_prgname (), ierror->message);
+
       g_clear_error (&ierror);
+      rudgiosync_directory_entry_free (source);
+      g_object_unref (src_descriptor);
+      g_object_unref (dest_descriptor);
+
       return 1;
     }
+
+  g_object_unref (src_descriptor);
+  g_object_unref (dest_descriptor);
 
   rudgiosync_synchronize (&destination, &source, !opt_size_only, opt_checksum, opt_delete, &ierror);
   if (ierror != NULL)
     {
       g_printerr ("%s: Synchronization failed: %s.\n", g_get_prgname (), ierror->message);
+
       g_clear_error (&ierror);
+      rudgiosync_directory_entry_free (source);
+      rudgiosync_directory_entry_free (destination);
+
+      return 1;
     }
   /*
   traverse_directory_tree (source, NULL);

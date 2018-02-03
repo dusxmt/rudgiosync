@@ -60,7 +60,7 @@ struct RudgiosyncDirectoryEntry_
 };
 
 
-RudgiosyncDirectoryEntry *rudgiosync_directory_entry_new (const gchar *uri, gboolean checksum_wanted, GError **error);
+RudgiosyncDirectoryEntry *rudgiosync_directory_entry_new (GFile *descriptor, gboolean checksum_wanted, GError **error);
 
 void rudgiosync_directory_entry_free (gpointer to_free);
 
