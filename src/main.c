@@ -21,12 +21,14 @@
 static gboolean opt_delete    = FALSE;
 static gboolean opt_checksum  = FALSE;
 static gboolean opt_size_only = FALSE;
+static gboolean opt_version   = FALSE;
 
 static GOptionEntry opt_entries[] =
 {
   { "size-only", 's', 0, G_OPTION_ARG_NONE, &opt_size_only, "Skip files that match in size", NULL },
   { "checksum",  'c', 0, G_OPTION_ARG_NONE, &opt_checksum,  "Skip files based on checksum, not size and modified time", NULL },
   { "delete",    'd', 0, G_OPTION_ARG_NONE, &opt_delete,    "Delete extraneous files from destination directories", NULL },
+  { "version",   'V', 0, G_OPTION_ARG_NONE, &opt_version,   "Show the program's version and quit", NULL },
   { NULL }
 };
 
@@ -60,6 +62,12 @@ main (int argc, char **argv)
       g_printerr ("%s: Command line option parsing failed: %s.\n", g_get_prgname (), ierror->message);
       g_clear_error (&ierror);
       return 1;
+    }
+
+  if (opt_version)
+    {
+      g_print ("%s\n", PACKAGE_STRING);
+      return 0;
     }
 
   if (argc < 2)
