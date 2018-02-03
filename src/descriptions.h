@@ -20,6 +20,7 @@
 #define _RUDGIOSYNC_DESCRIPTIONS_H_
 
 #include "boiler.h"
+#include "checksum.h"
 
 
 typedef struct RudgiosyncFile_ RudgiosyncFile;
@@ -28,8 +29,8 @@ typedef struct RudgiosyncDirectoryEntry_ RudgiosyncDirectoryEntry;
 
 struct RudgiosyncFile_
 {
-  guint64  size; 
-  gchar   *checksum;
+  guint64 size;
+  RudgiosyncChecksum checksum;
 };
 
 struct RudgiosyncDirectory_

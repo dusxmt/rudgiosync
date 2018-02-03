@@ -78,9 +78,16 @@ main (int argc, char **argv)
       return 1;
     }
 
+#ifndef RUDGIOSYNC_CHECKSUM_ENABLED
   if (opt_checksum)
     {
-      g_printerr ("Sorry, checksum-based file comparison is not supported yet.\n");
+      g_printerr ("%s: Command line option parsing failed: %s.\n", g_get_prgname (), "The --checksum option cannot be used, since checksum support was disabled at compile time");
+      return 1;
+    }
+#endif
+  if (opt_checksum && opt_size_only)
+    {
+      g_printerr ("%s: Command line option parsing failed: %s.\n", g_get_prgname (), "The --checksum and --size-only options are mutually exclusive");
       return 1;
     }
 
@@ -119,7 +126,7 @@ main (int argc, char **argv)
   g_object_unref (src_descriptor);
   g_object_unref (dest_descriptor);
 
-  rudgiosync_synchronize (&destination, &source, !opt_size_only, opt_checksum, opt_delete, &ierror);
+  rudgiosync_synchronize (&destination, &source, !(opt_size_only || opt_checksum), opt_checksum, opt_delete, &ierror);
   if (ierror != NULL)
     {
       g_printerr ("%s: Synchronization failed: %s.\n", g_get_prgname (), ierror->message);

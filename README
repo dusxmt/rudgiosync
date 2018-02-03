@@ -5,17 +5,17 @@ Rudgiosync is a simplistic file synchronizing utility, inspired heavily by
 rsync, which uses gio as its I/O library, and can therefore access and
 synchronize gvfs-based filesystems.
 
-Currently, the synchronization utility compares files based on their size and
-the time of their last modification, but support for checksum-based comparison
-is planned as well.
+The synchronization utility compares files either by comparing their size
+and time of last modification, or by only comparing their sizes, or optionally
+by comparing the SHA256 checksums of the individual files.
 
 
 The program expects two command-line arguments, the source and destination
 locations to be synchronized (specified as a filename or a GIO-supported URI).
 
-Additionally, you may specify whether you want files to be compared solely by
-their size, or by their size and the time of their last modification; see the
-help listing for more details:  rudgiosync --help
+Additionally, you may specify which comparison criteria should apply, and
+whether extraneous files from destination directories should be deleted; see
+the help listing for more details:  rudgiosync --help
 
 
 Example usage:
@@ -35,6 +35,9 @@ Dependencies:
     Required for compiling:
         pkg-config >= 0.9.0
         glib       >= 2.32.4
+
+    Required for checksum support: (optional)
+        nettle
 
     Required for bootstrapping from git:
         autoconf   >= 2.69

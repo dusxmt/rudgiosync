@@ -87,7 +87,16 @@ rudgiosync_directory_entry_new_internal (const gchar *uri, GFile *descriptor, GF
         retval->data.file.size = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
         if (checksum_wanted)
           {
-            g_warning ("Checksum wanted, but feature not supported yet.");
+            rudgiosync_checksum_for_gfile (retval->descriptor,
+                                           &(retval->data.file.checksum),
+                                           &ierror);
+            if (ierror != NULL)
+              {
+                g_propagate_prefixed_error (error, ierror, "Failed to produce a checksum for the file `%s': ", uri);
+
+                rudgiosync_directory_entry_free (retval);
+                return NULL;
+              }
           }
         break;
 
@@ -220,10 +229,6 @@ rudgiosync_directory_entry_free (gpointer to_free_in)
 
   switch (to_free->type)
     {
-      case RUDGIOSYNC_DIR_ENTRY_FILE:
-        g_free (to_free->data.file.checksum);
-        break;
-
       case RUDGIOSYNC_DIR_ENTRY_DIR:
         g_slist_free_full (to_free->data.directory.entries, rudgiosync_directory_entry_free);
         break;

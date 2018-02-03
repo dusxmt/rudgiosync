@@ -16,6 +16,7 @@
 
 #include "boiler.h"
 #include "operations.h"
+#include "checksum.h"
 #include "errors.h"
 
 #include <string.h>
@@ -50,14 +51,13 @@ traverse_directory_tree (RudgiosyncDirectoryEntry *entry, const gchar *prefix)
   switch (entry->type)
     {
       case RUDGIOSYNC_DIR_ENTRY_FILE:
-        if (entry->data.file.checksum != NULL)
-          {
-            g_print (" (file, size: %" G_GUINT64_FORMAT ", modified: %" G_GUINT64_FORMAT ", checksum: %s)\n", entry->data.file.size, entry->modified_time, entry->data.file.checksum);
-          }
-        else
-          {
-            g_print (" (file, size: %" G_GUINT64_FORMAT ", modified: %" G_GUINT64_FORMAT ")\n", entry->data.file.size, entry->modified_time);
-          }
+        #ifdef RUDGIOSYNC_CHECKSUM_ENABLED
+          g_print (" (file, size: %" G_GUINT64_FORMAT ", modified: %" G_GUINT64_FORMAT ", checksum: ", entry->data.file.size, entry->modified_time);
+          rudgiosync_checksum_display (&(entry->data.file.checksum));
+          g_print (")\n");
+        #else
+          g_print (" (file, size: %" G_GUINT64_FORMAT ", modified: %" G_GUINT64_FORMAT ")\n", entry->data.file.size, entry->modified_time);
+        #endif
         break;
 
       case RUDGIOSYNC_DIR_ENTRY_DIR:
@@ -238,7 +238,8 @@ files_differ (RudgiosyncDirectoryEntry *destination,
 {
   if (checksum_only)
     {
-      g_warning ("Checksum comparison not yet supported, falling back to the defaults.");
+      return rudgiosync_checksums_differ (&(destination->data.file.checksum),
+                                          &(source->data.file.checksum));
     }
   if (!check_timestamp)
     {
