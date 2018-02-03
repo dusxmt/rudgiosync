@@ -1,1 +1,4 @@
-The project just started, so there's no news yet.
+rudgiosync 1.0.0:
+
+    Released on January 3rd, 2018, this is the first release of rudgiosync, a
+    simple (rudimentary even) gio-enabled file synchronization utility.

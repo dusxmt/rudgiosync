@@ -1,7 +1,7 @@
 dnl -- Process this file with autoconf to generate a `configure' script. --
 
 AC_PREREQ([2.69])
-AC_INIT([rudgiosync], [0.0.0-dev], [dusxmt@gmx.com])
+AC_INIT([rudgiosync], [1.0.0], [dusxmt@gmx.com])
 
 AC_CONFIG_SRCDIR([src/descriptions.c])
 AC_CONFIG_AUX_DIR([build-aux])
