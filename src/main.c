@@ -87,6 +87,7 @@ main (int argc, char **argv)
   if (ierror != NULL)
     {
       g_printerr ("%s: Failed to investigate the source: %s.\n", g_get_prgname (), ierror->message);
+      g_clear_error (&ierror);
       return 1;
     }
 
@@ -96,6 +97,7 @@ main (int argc, char **argv)
   if (ierror != NULL)
     {
       g_printerr ("%s: Failed to investigate the destination: %s.\n", g_get_prgname (), ierror->message);
+      g_clear_error (&ierror);
       return 1;
     }
 

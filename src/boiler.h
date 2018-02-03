@@ -17,7 +17,7 @@
 /* Boilerplate code. */
 
 #ifndef _RUDGIOSYNC_BOILER_H_
-#define _RUDGIOSYNC_BOILER_H_ 1
+#define _RUDGIOSYNC_BOILER_H_
 
 
 #include <config.h>
