@@ -695,8 +695,61 @@ rudgiosync_synchronize (RudgiosyncDirectoryEntry **destination,
                         gboolean delete_unwanted,
                         GError **error)
 {
-  return rudgiosync_synchronize_internal (destination, source,
-                                          check_timestamp, checksum_only, delete_unwanted,
-                                          NULL,
-                                          error);
+  RudgiosyncDirectoryEntry *subdir_entry;
+  RudgiosyncDirectoryEntry **subdir_entry_loc;
+  GSList *subdir_entry_li;
+  GFile *subdir_entry_descriptor;
+  GError *ierror = NULL;
+
+  /**
+   * If on the top level, the user requests us to synchronize a source file
+   * with a destination directory, they most likely want to copy the file into
+   * the directory, instead of replacing it.
+   *
+   * Note: This behavior only applies to the highest level; deeper within the
+   *       directory tree, files will replace directories with the same names.
+   */
+  if ((*source)->type == RUDGIOSYNC_DIR_ENTRY_FILE
+      && (*destination)->type == RUDGIOSYNC_DIR_ENTRY_DIR)
+    {
+      subdir_entry_loc = NULL;
+
+      for (subdir_entry_li = (*destination)->data.directory.entries;
+           subdir_entry_li != NULL && subdir_entry_loc == NULL;
+           subdir_entry_li = subdir_entry_li->next)
+        {
+          subdir_entry_loc = (RudgiosyncDirectoryEntry **)(&(subdir_entry_li->data));
+          if (strcmp ((*subdir_entry_loc)->name, (*source)->name) != 0)
+            {
+              subdir_entry_loc = NULL;
+            }
+        }
+      if (subdir_entry_loc == NULL)
+        {
+          subdir_entry_descriptor = g_file_get_child ((*destination)->descriptor, (*source)->name);
+          subdir_entry = create_empty_file (subdir_entry_descriptor,
+                                            checksum_only,
+                                            &ierror);
+          g_object_unref (subdir_entry_descriptor);
+          if (ierror != NULL)
+            {
+              g_propagate_error (error, ierror);
+              return FALSE;
+            }
+          (*destination)->data.directory.entries = g_slist_prepend ((*destination)->data.directory.entries, subdir_entry);
+          subdir_entry_loc = (RudgiosyncDirectoryEntry **)(&((*destination)->data.directory.entries->data));
+        }
+
+      return rudgiosync_synchronize_internal (subdir_entry_loc, source,
+                                              check_timestamp, checksum_only, delete_unwanted,
+                                              (*destination)->name,
+                                              error);
+    }
+  else
+    {
+      return rudgiosync_synchronize_internal (destination, source,
+                                              check_timestamp, checksum_only, delete_unwanted,
+                                              NULL,
+                                              error);
+    }
 }
